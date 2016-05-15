@@ -2,8 +2,8 @@
 #include <iostream>
 
 #include "lazy_vector.h"
-
-
+#include <random>
+#include <algorithm>
 
 #include <vector>
 #include <ctime>
@@ -41,12 +41,19 @@ int main(void) {
 	lazy_vector<int> vec;
 
 	for (int i = 0; i < 1000; i++) {
-		vec.push_back(i);
+		vec.push_back(rand() % 5000);
 	}
-
+	/*
 	for (int i = 0; i < 1000; i++) {
 		std::cout << vec[i] << std::endl;
+	}*/
+	//std::sort(vec.begin(), vec.end());
+
+	lazy_vector<int>::iterator it;
+	for (int x : vec) {
+		std::cout << x << std::endl;
 	}
+
 
 	int wait = 5;
 
