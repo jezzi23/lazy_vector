@@ -17,13 +17,13 @@ int main(void) {
 	for (int i = 0; i < 10000000; i++) {
 		vec.push_back(i);
 	}
-	
+
 	std::clock_t end = std::clock();
 
 	std::cout << double(end-begin)/CLOCKS_PER_SEC << std::endl;
 
 
-	
+
 	begin = std::clock();
 
 	std::vector<int> tvec;
@@ -34,7 +34,7 @@ int main(void) {
 
 	std::cout << double(end-begin)/CLOCKS_PER_SEC << std::endl;
 
-	
+
 	*/
 
 
@@ -47,7 +47,7 @@ int main(void) {
 	for (int i = 0; i < 1000; i++) {
 		std::cout << vec[i] << std::endl;
 	}*/
-	//std::sort(vec.begin(), vec.end());
+	std::sort(vec.begin(), vec.end());
 
 	lazy_vector<int>::iterator it;
 	for (int x : vec) {

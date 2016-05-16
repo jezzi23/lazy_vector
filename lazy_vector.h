@@ -9,8 +9,8 @@
 
 /*
 TODO:
-	- Make specialized iterator
-	-
+	- implement the commented functions
+	- fix iterator & container typedef conflicts?
 
 */
 
@@ -29,7 +29,7 @@ public:
 	class iterator;
 	typedef const iterator const_iterator;
 
-	
+
 	typedef struct {
 		pointer first;
 		size_type size;
@@ -53,7 +53,7 @@ public:
 	//construct n T objects, with each being a copy of val
 	lazy_vector(size_type n, const_reference val);
 	//copy constructor
-	lazy_vector(const_reference val); 
+	lazy_vector(const_reference val);
 	//assignment operator
 	lazy_vector<T>& operator=(const lazy_vector& vec);
 
@@ -61,7 +61,7 @@ public:
 
 	iterator begin() const;
 	iterator end() const;
-	
+
 	// Capacity
 
 	size_type size() const;
@@ -127,7 +127,7 @@ public:
 		iterator& operator-=(size_type decr);
 		reference operator*();
 		reference operator->();
-		
+
 		~iterator();
 	};
 
@@ -138,7 +138,7 @@ public:
  | LAZY_VECTOR IMPLEMENTATION BEGINS
  *----------------------------------------*/
 
- 
+
 /*-----------------------------------------
  | LAZY_VECTOR PRIVATE METHODS
  *----------------------------------------*/
@@ -166,7 +166,7 @@ void lazy_vector<T>::reAlloc() {
 
 	//print test
 	std::cout << "Re-allocing from " << tail.capacity/2 << " to " << tail.capacity << std::endl;
-	
+
 }
 
 
@@ -252,8 +252,8 @@ typename lazy_vector<T>::iterator lazy_vector<T>::begin() const {
 	pointer tail_first = tail.first + head.size;
 	pointer tail_last = tail.first + head.size + tail.size - 1;
 
-	return iterator(head.first, head.first, head_last, 
-			tail_first, tail_last); 
+	return iterator(head.first, head.first, head_last,
+			tail_first, tail_last);
 }
 
 template<class T>
@@ -262,8 +262,8 @@ typename lazy_vector<T>::iterator lazy_vector<T>::end() const {
 	pointer tail_first = tail.first + head.size;
 	pointer tail_last = tail.first + head.size + tail.size - 1;
 
-	return iterator(tail_last + 1, head.first, head_last, 
-			tail_first, tail_last); 
+	return iterator(tail_last + 1, head.first, head_last,
+			tail_first, tail_last);
 }
 
 // LAZY_VECTOR : ACCESSING METHODS
@@ -302,10 +302,10 @@ typename lazy_vector<T>::reference lazy_vector<T>::back() const {
 template<class T>
 void lazy_vector<T>::push_back(value_type&& val) {
 	if (head.size + tail.size >= tail.capacity) {
-		reAlloc();	
+		reAlloc();
 		mem_isSplit = 1;
 	}
-	
+
 	//construct new T in tail - using placement new
 	new (&tail.first[head.size + tail.size++]) value_type(val);
 	if (mem_isSplit) {
@@ -323,10 +323,10 @@ void lazy_vector<T>::push_back(value_type&& val) {
 template<class T>
 void lazy_vector<T>::push_back(const reference val) {
 	if (head.size + tail.size >= tail.capacity) {
-		reAlloc();	
+		reAlloc();
 		mem_isSplit = 1;
 	}
-	
+
 	//construct new T in tail - using placement new
 	new (&tail.first[head.size + tail.size++]) value_type(val);
 	if (mem_isSplit) {
@@ -411,14 +411,14 @@ lazy_vector<T>::~lazy_vector() {
 
 template<class T>
 lazy_vector<T>::iterator::iterator() {
-	
+
 }
 
 template<class T>
-lazy_vector<T>::iterator::iterator(pointer curr, pointer h_first, pointer h_last, pointer t_first, pointer t_last) 
+lazy_vector<T>::iterator::iterator(pointer curr, pointer h_first, pointer h_last, pointer t_first, pointer t_last)
 	: current_ptr(curr), head_first(h_first), head_last(h_last), tail_first(t_first), tail_last(t_last)
 {
-	
+
 }
 
 
@@ -435,7 +435,7 @@ typename lazy_vector<T>::iterator lazy_vector<T>::iterator::operator+(size_type 
 
 template<class T>
 bool lazy_vector<T>::iterator::operator==(const iterator& it) {
-	return curent_ptr == it.current_ptr;
+	return current_ptr == it.current_ptr;
 }
 
 template<class T>
@@ -470,7 +470,7 @@ typename lazy_vector<T>::iterator lazy_vector<T>::iterator::operator-(size_type 
 	// if current_ptr is within head and current_ptr + n exceeds head..
 	if (current_ptr - n < tail_first && current_ptr >= tail_first && current_ptr <= tail_last) {
 		size_type tail_offset = tail_first - current_ptr; //distance or length between
-		current_ptr = head_last - n + head_offset + 1;
+		current_ptr = head_last - n + tail_offset + 1;
 	}
 	else current_ptr -= n;
 	return lazy_vector<T>::iterator(*this);
@@ -539,6 +539,6 @@ lazy_vector<T>::iterator::~iterator() {
 /*-----------------------------------------
  | LAZY_VECTOR ITERATOR IMPLEMENTATIONS ENDS
  *----------------------------------------*/
- 
+
 #endif // __LAZY_VECTOR__
 
