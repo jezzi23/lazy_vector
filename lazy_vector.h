@@ -2,6 +2,7 @@
 #ifndef __LAZY_VECTOR__
 #define __LAZY_VECTOR__
 
+#include <cassert>
 #include <stdlib.h>
 #include <iostream>
 
@@ -40,9 +41,9 @@ private:
 
 	mem_region head, tail;
 
-	bool mem_isSplit;
 	void mem_swap();
 	void reAlloc();
+	bool lazy() const;
 
 
 public:
@@ -156,7 +157,7 @@ template<class T>
 void lazy_vector<T>::mem_swap() {
 	//all values T in head have been lazily destructed
 	//free the memory
-	if (mem_isSplit) {
+	if (lazy()) {
 		::operator delete(head.first);
 	}
 	head = tail;
@@ -174,6 +175,14 @@ void lazy_vector<T>::reAlloc() {
 	tail.size = 0;
 }
 
+template<class T>
+bool lazy_vector<T>::lazy() const {
+	if (head.capacity == 0) return 0; //head is unused
+	// returns true if a lazy copy has to be made
+	assert(2*head.size + tail.size <= tail.capacity);
+	return 2*head.size + tail.size == tail.capacity;
+}
+
 
 /*-----------------------------------------
  | LAZY_VECTOR PUBLIC METHODS
@@ -187,7 +196,6 @@ lazy_vector<T>::lazy_vector() : lazy_vector(LAZY_VECTOR_DEFAULT_CAPACITY) {
 	head.first = nullptr;
 	tail.capacity = LAZY_VECTOR_DEFAULT_CAPACITY;
 	tail.size = 0;
-	mem_isSplit = 0;
 
 	tail.first = (pointer) ::operator new(tail.capacity * sizeof(value_type));
 }
@@ -211,7 +219,6 @@ lazy_vector<T>::lazy_vector(size_type n) {
 		//placement new into tail
 		new (tail.first + i) value_type();
 	}
-	mem_isSplit = 0;
 }
 
 
@@ -233,7 +240,6 @@ lazy_vector<T>::lazy_vector(size_type n, const reference) {
 		//placement new into tail
 		new (tail.first + i) value_type(reference);
 	}
-	mem_isSplit = 0;
 }
 
 template<class T>
@@ -252,9 +258,6 @@ lazy_vector<T>::lazy_vector(const lazy_vector& cVec) {
 	tail.first = (pointer) ::operator new(cVec.tail.size * sizeof(value_type));
 	if (head.size > 0) memcpy(head.first, cVec.head.first, head.size * sizeof(value_type));
 	memcpy(tail.first+head.size, cVec.first+head.size, tail.size * sizeof(value_type));
-
-
-	mem_isSplit = cVec.mem_isSplit;
 }
 
 template<class T>
@@ -312,7 +315,7 @@ typename lazy_vector<T>::iterator lazy_vector<T>::begin() const {
 	pointer tail_last = tail.first + head.size + tail.size - 1;
 
 	pointer current_ptr;
-	if (mem_isSplit) current_ptr = head.first;
+	if (lazy()) current_ptr = head.first;
 	else current_ptr = tail_first;
 	return iterator(current_ptr, head.first, head_last,
 			tail_first, tail_last);
@@ -365,12 +368,11 @@ template<class T>
 void lazy_vector<T>::push_back(value_type&& val) {
 	if (head.size + tail.size >= tail.capacity) {
 		reAlloc();
-		mem_isSplit = 1;
 	}
 
 	//construct new T in tail - using placement new
-	new (&tail.first[head.size + tail.size++]) value_type(val);
-	if (mem_isSplit) {
+	new (&tail.first[head.size + tail.size]) value_type(val);
+	if (lazy()) {
 
 		//lazy copy 1 item from head to tail using copy constructor
 		new (&tail.first[head.size-1]) value_type(head.first[head.size-1]);
@@ -379,6 +381,7 @@ void lazy_vector<T>::push_back(value_type&& val) {
 		(&head.first[head.size-1])->~value_type();
 		head.size--;
 	}
+	++tail.size;
 }
 
 
@@ -386,12 +389,11 @@ template<class T>
 void lazy_vector<T>::push_back(const reference val) {
 	if (head.size + tail.size >= tail.capacity) {
 		reAlloc();
-		mem_isSplit = 1;
 	}
 
 	//construct new T in tail - using placement new
-	new (&tail.first[head.size + tail.size++]) value_type(val);
-	if (mem_isSplit) {
+	new (&tail.first[head.size + tail.size] value_type(val);
+	if (lazy()) {
 
 		//lazy copy 1 item from head to tail using copy constructor
 		new (&tail.first[head.size-1]) value_type(head.first[head.size-1]);
@@ -400,12 +402,13 @@ void lazy_vector<T>::push_back(const reference val) {
 		(&head.first[head.size-1])->~value_type();
 		head.size--;
 	}
+	++tail.size;
 }
 
 template<class T>
 typename lazy_vector<T>::value_type lazy_vector<T>::pop_back() {
 	reference element_at_back = *(this->end() - 1);
-	if (mem_isSplit) {
+	if (lazy()) {
 		//move 1 item from tail to head using copy constructor
 		reference old_element = *(tail.first + head.size);
 		new (head.first + head.size) value_type(old_element);
@@ -423,7 +426,6 @@ typename lazy_vector<T>::value_type lazy_vector<T>::pop_back() {
 		//deallocate tail and head becomes new tail
 		::operator delete(tail.first);
 		tail = head;
-		mem_isSplit = 0;
 		head.first = nullptr;
 		head.size = 0;
 		head.capacity = 0;
