@@ -20,6 +20,7 @@ template<class T>
 class lazy_vector {
 
 public:
+	// The usual typedef interface against the STL
 	typedef T value_type;
 	typedef T* pointer;
 	typedef const pointer const_pointer;
@@ -101,7 +102,6 @@ public:
 
 	class iterator {
 		
-
 	private:
 		pointer current_ptr;
 		pointer head_first;
@@ -221,7 +221,6 @@ lazy_vector<T>::lazy_vector(size_type n) {
 	}
 }
 
-
 template<class T>
 lazy_vector<T>::lazy_vector(size_type n, const reference) {
 
@@ -248,7 +247,6 @@ lazy_vector<T>::lazy_vector(const lazy_vector& cVec) {
 	~lazy_vector();
 	//alloc for new head & tail
 
-
 	head.capacity = cVec.head.capacity;
 	head.size = cVec.head.size;
 	tail.size = cVec.tail.size;
@@ -262,10 +260,9 @@ lazy_vector<T>::lazy_vector(const lazy_vector& cVec) {
 
 template<class T>
 lazy_vector<T>& lazy_vector<T>::operator=(const lazy_vector& vec) {
+	// TODO: copy swap idiom for exception safety
 	this->lazy_vector(vec);
 }
-
-
 
 // LAZY_VECTOR : CAPACITY
 
@@ -305,8 +302,6 @@ void lazy_vector<T>::shrink_to_fit() {
 }
 
 
-
-
 // LAZY_VECTOR : ITERATORS METHODS
 template<class T>
 typename lazy_vector<T>::iterator lazy_vector<T>::begin() const {
@@ -334,6 +329,9 @@ typename lazy_vector<T>::iterator lazy_vector<T>::end() const {
 // LAZY_VECTOR : ACCESSING METHODS
 template<class T>
 typename lazy_vector<T>::reference lazy_vector<T>::at(size_type pos) const {
+	// possibly throw out of range exception
+	if (pos < 0 || pos >= size())
+		throw std::out_of_range;
 	if (pos >= head.size) {
 		return tail.first[pos];
 	}
@@ -344,6 +342,7 @@ typename lazy_vector<T>::reference lazy_vector<T>::at(size_type pos) const {
 
 template<class T>
 typename lazy_vector<T>::reference lazy_vector<T>::operator[](size_type pos) const {
+	// no throw
 	if (pos >= head.size) {
 		return tail.first[pos];
 	}
@@ -392,7 +391,7 @@ void lazy_vector<T>::push_back(const reference val) {
 	}
 
 	//construct new T in tail - using placement new
-	new (&tail.first[head.size + tail.size] value_type(val);
+	new (&tail.first[head.size + tail.size]) value_type(val);
 	if (lazy()) {
 
 		//lazy copy 1 item from head to tail using copy constructor
@@ -431,7 +430,7 @@ typename lazy_vector<T>::value_type lazy_vector<T>::pop_back() {
 		head.capacity = 0;
 	}
 
-	// return the copy
+	// return as a copy
 	return tmp;
 }
 
@@ -466,28 +465,28 @@ void lazy_vector<T>::swap(iterator pos1, iterator pos2) {
 	*pos2 = tmp;
 }
 
-
 template<class T>
 void lazy_vector<T>::swap(lazy_vector& vec) {
 	//create tmp and swap two lazy_vectors
 }
 
-
 template<class T>
 void lazy_vector<T>::clear() {
-	//for 0..size destroy all objects in both head & tail
-	//asert head.size = tail.size = 0
+	//deconstruct all existing elements in head & tail
+	for (size_type i = 0; i < head.size; ++i) {
+		head.first[i].~value_type();
+	}
+	for (size_type i = 0; i < tail.size; ++i) {
+		tail.first[i].~value_type();
+	}
+	head.size = tail.size = 0;
 }
-
-
-
 
 // LAZY_VECTOR : DESTRUCTOR
 
 template<class T>
 lazy_vector<T>::~lazy_vector() {
-	head.size = 0;
-	tail.size = 0;
+	clear();
 	
 	if (head.capacity >= 0) {
 		::operator delete(head.first);
@@ -497,9 +496,7 @@ lazy_vector<T>::~lazy_vector() {
 		::operator delete(tail.first);
 		tail.capacity = 0;
 	}
-	
 }
-
 
 /*-----------------------------------------
  | LAZY_VECTOR IMPLEMENTATION ENDS
@@ -512,14 +509,11 @@ lazy_vector<T>::~lazy_vector() {
 
 template<class T>
 lazy_vector<T>::iterator::iterator() {
-
 }
 
 template<class T>
 lazy_vector<T>::iterator::iterator(pointer curr, pointer h_first, pointer h_last, pointer t_first, pointer t_last)
-	: current_ptr(curr), head_first(h_first), head_last(h_last), tail_first(t_first), tail_last(t_last)
-{
-
+	: current_ptr(curr), head_first(h_first), head_last(h_last), tail_first(t_first), tail_last(t_last) {
 }
 
 
@@ -568,14 +562,14 @@ typename lazy_vector<T>::iterator& lazy_vector<T>::iterator::operator+=(size_typ
 }
 
 template<class T>
-typename lazy_vector<T>::iterator lazy_vector<T>::iterator::operator-(size_type n) {
-	// if current_ptr is within head and current_ptr + n exceeds head..
+typename lazy_vector<T>::iterator lazy_vector<T>::iterator::operator-(size_type len) {
+	// if current_ptr is within head and current_ptr + len exceeds head..
 	pointer new_ptr;
-	if (current_ptr - n < tail_first && current_ptr >= tail_first) {
+	if (current_ptr - len < tail_first && current_ptr >= tail_first) {
 		size_type tail_offset = current_ptr - tail_first; //distance or length between
-		new_ptr = head_last - n + tail_offset + 1;
+		new_ptr = head_last - len + tail_offset + 1;
 	}
-	else new_ptr = current_ptr - n;
+	else new_ptr = current_ptr - len;
 	return lazy_vector<T>::iterator(new_ptr, head_first, head_last, tail_first, tail_last);
 
 }
@@ -618,8 +612,8 @@ typename lazy_vector<T>::size_type lazy_vector<T>::iterator::operator-(const ite
 }
 
 template<class T>
-typename lazy_vector<T>::iterator& lazy_vector<T>::iterator::operator-=(size_type incr) {
-	*this = *this - incr;
+typename lazy_vector<T>::iterator& lazy_vector<T>::iterator::operator-=(size_type decr) {
+	*this = *this - decr;
 	return *this;
 }
 

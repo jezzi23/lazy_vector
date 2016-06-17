@@ -10,7 +10,7 @@
 
 int main(void) {
 	/*
-	size_t size = 10000000;
+	size_t size = 100000;
 	int* nums = new int[size];
 
 
@@ -64,8 +64,8 @@ int main(void) {
 	std::sort(nVec.begin(), nVec.end());
 	end = std::clock();
 	std::cout << double(end - begin) / CLOCKS_PER_SEC << std::endl << std::endl;
+	
 	*/
-
 	lazy_vector<int> vec(97);
 	
 	for (int i = 0; i < 500; ++i) {
