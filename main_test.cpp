@@ -9,7 +9,7 @@
 #include <ctime>
 
 int main(void) {
-	/*
+	
 	size_t size = 100000;
 	int* nums = new int[size];
 
@@ -65,23 +65,13 @@ int main(void) {
 	end = std::clock();
 	std::cout << double(end - begin) / CLOCKS_PER_SEC << std::endl << std::endl;
 	
-	*/
-	lazy_vector<int> vec(97);
 	
-	for (int i = 0; i < 500; ++i) {
-		vec.push_back(rand() % 500000);
-		
-	} 
-	int i = 0;
-	vec.swap(vec.begin() + 97, vec.begin() + 107);
-	for (int& x : vec) {
-		std::cout << i++ << ": " << x << std::endl;
-	}
+	
+	lVec.swap(lVec.begin() + 97, lVec.begin() + 107);
+	
 
 
-
-	int wait = 5;
+	int wait = 0;
 	std::cin >> wait;
-	wait += 1;
 	
 }
