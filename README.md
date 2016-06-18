@@ -24,27 +24,20 @@ for (int i = 0; i < 10; ++i){
   vec.push_back(9-i);
 }
 //vec now contains [9,8,7,6,5,4,3,2,1,0].
-
 //using the iterator
-
 lazy_vector<int>::iterator it;
 for (it = vec.begin(); it != vec.end(); ++it) {
   if (*it < 5) *it *= 2;
 }
 //for (int& x: vec) {...} also works
 //vec now contains [9,8,7,6,5,<b>8,6,4,2,0</b>].
-
 // random accesing
 vec[7] = 100;
 //vec now contains [9,8,7,6,5,8,6,<b>100</b>,2,0].
-
 //using STL functions
-
 //swap fourth element from beginning wand the third element from the end
 std::swap(vec.begin()+4, vec.end()-3);
 //vec now contains [9,8,7,6,<b>100</b>,8,6,<b>5</b>,2,0].
-
 //sort the lazy_vector from beginning to the seventh element
 std::sort(vec.begin(), vec.begin()+8);
 //vec now contains [<b>5,6,6,7,8,8,9,100</b>,2,0].
-
