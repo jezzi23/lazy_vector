@@ -39,7 +39,7 @@ vec[7] = 100;
 
 //using STL functions
 //swap fourth element from beginning wand the third element from the end
-std::swap(vec.begin()+4, vec.end()-3);
+std::iter_swap(vec.begin()+4, vec.end()-3);
 //vec now contains [9,8,7,6,<b>100</b>,8,6,<b>5</b>,2,0].
 
 //sort the lazy_vector from beginning to the seventh element
