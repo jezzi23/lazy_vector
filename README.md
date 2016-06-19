@@ -20,6 +20,7 @@ lazy_vector's implementation is abstracted and designed to be usable with many f
 ##Examples.
 <pre><code>
 lazy_vector<int> vec;
+//or lazy_vector<int, MyCrazyAllocator> using a custom allocator
 for (int i = 0; i < 10; ++i){
   vec.push_back(9-i);
 }
