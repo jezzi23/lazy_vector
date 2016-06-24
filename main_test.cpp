@@ -8,67 +8,73 @@
 #include <vector>
 #include <ctime>
 
+template<class T>
+void printVec(const lazy_vector<T>& vec) {
+	for (T& i: vec) {
+		std::cout << i << ",";
+	}
+	std::cout << std::endl;
+}
+
+template<class T>
+bool equalVec(const lazy_vector<T>& vec_first, const lazy_vector<T>& vec_second) {
+	if (vec_first.size() != vec_second.size()) return 0;
+	for (unsigned int i = 0; i < vec_first.size(); ++i) {
+		if (vec_first[i] != vec_second[i]) return 0;
+	}
+	return 1;
+}
+
 int main(void) {
+	lazy_vector<int> vec = { 9, 8, 7, 6, 5, 4, 3, 2, 1, 0 };
+	//or lazy_vector<int, MyCrazyAllocator> using a custom allocator
 	
-	size_t size = 100000;
-	int* nums = new int[size];
+	
+	//vec now contains [9,8,7,6,5,4,3,2,1,0].
+	printVec(vec);
 
-
-	lazy_vector<int> lVec;
-	std::vector<int> nVec;
-	for (int i = 0; i < size; i++) {
-		nums[i] = (rand() % 500000);
+	//using the iterator
+	lazy_vector<int>::iterator it;
+	for (it = vec.begin(); it != vec.end(); ++it) {
+		if (*it < 5) *it *= 2;
 	}
-	// FILL LAZY
-	std::cout << "LAZY_VECTOR PUSH BACK FILL TIME: ";
-	std::clock_t begin = std::clock();
-
-	for (int i = 0; i < size; i++) {
-		lVec.push_back(nums[i]);
-	}
-
-	std::clock_t end = std::clock();
-
-	std::cout << double(end-begin)/CLOCKS_PER_SEC << std::endl << std::endl;
+	//for (int& x: vec) {...} also works
+	//vec now contains [9,8,7,6,5,8,6,4,2,0].
+	printVec(vec);
 
 
-	std::cout << "ORDINARY VECTOR PUSH BACK FILL TIME: ";
-	begin = std::clock();
-
-	for (int i = 0; i < size; i++) {
-		nVec.push_back(nums[i]);
-	}
-	end = std::clock();
-
-	std::cout << double(end-begin)/CLOCKS_PER_SEC << std::endl << std::endl;
-
-	std::cout << "IS SAME VEC: ";
-	bool isSame = 1;
-	for (int i = 0; i < size; i++) {
-		if (nVec[i] != lVec[i]) {
-			isSame = 0;
-			break;
-		}
-	}
-	std::cout << isSame << std::endl << std::endl;
+	// random accesing
+	vec[7] = 100;
+	//vec now contains [9,8,7,6,5,8,6,100,2,0].
+	printVec(vec);
 
 
-	std::cout << "LAZY VECTOR SORT TIME: ";
-	begin = std::clock();
-	std::sort(lVec.begin(), lVec.end());
-	end = std::clock();
-	std::cout << double(end - begin) / CLOCKS_PER_SEC << std::endl << std::endl;
+	//using STL functions
+	//swap fourth element from beginning wand the third element from the end
+	std::iter_swap(vec.begin() + 4, vec.end() - 3);
+	//vec now contains [9,8,7,6,100,8,6,5,2,0].
+	printVec(vec);
+
+
+	//sort the lazy_vector from beginning to the seventh element
+	std::sort(vec.begin(), vec.begin() + 8);
+	//vec now contains [5,6,6,7,8,8,9,100,2,0].
+	printVec(vec);
+
+	lazy_vector<int> cVec(vec);
+	printVec(cVec);
 	
-	std::cout << "VECTOR SORT TIME: ";
-	begin = std::clock();
-	std::sort(nVec.begin(), nVec.end());
-	end = std::clock();
-	std::cout << double(end - begin) / CLOCKS_PER_SEC << std::endl << std::endl;
+
+	std::cout << "is same vec: " << equalVec(vec, cVec) << std::endl;
+
+	cVec[5] = 502;
+	std::cout << "is same vec: " << equalVec(vec, cVec) << std::endl;
+
 	
-	
-	
-	lVec.swap(lVec.begin() + 97, lVec.begin() + 107);
-	
+	printVec(cVec);
+
+	vec = cVec;
+	cVec = cVec;
 
 
 	int wait = 0;
