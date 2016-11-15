@@ -8,14 +8,15 @@ public:
 	TestType() {
 		x = new int();
 	}
-	TestType(TestType& t) {
+	TestType(const TestType& t) {
 		x = new int(*t.x);
 	}
+
 	~TestType() {
 		delete x;
 	}
 
-	TestType& operator=(TestType& t) {
+	TestType& operator=(const TestType& t) {
 		if (t.x != 0) delete x;
 		x = new int(*t.x);
 	}
@@ -67,9 +68,48 @@ BOOST_AUTO_TEST_CASE(constructor_cpy) {
 	BOOST_CHECK_EQUAL(vec1->size(), vec2.size());
 	BOOST_CHECK_EQUAL(vec1->capacity(), vec2.capacity());
 
+	// check if vec2 can stand on its own when vec1 is gone from memory
 	delete vec1;
 
+	int i = 0;
+	for (const auto itr : init_list) {
+		BOOST_CHECK_EQUAL(vec2[i], itr);
+		++i;
+	}
+}
+
+BOOST_AUTO_TEST_CASE(constructor_move) {
+	std::initializer_list<int> init_list{ 13, 16, 19 };
+	lazy_vector<int>* vec1 = new lazy_vector<int>(init_list);
+	lazy_vector<int> vec2(std::move(*vec1));
+
+	BOOST_CHECK_EQUAL(vec2.size(), init_list.size());
+	BOOST_CHECK_EQUAL(vec1->size(), 0);
+
 	// check if vec2 can stand on its own when vec1 is gone from memory
+	delete vec1;
+
+	int i = 0;
+	for (const auto itr : init_list) {
+		BOOST_CHECK_EQUAL(vec2[i], itr);
+		++i;
+	}
+}
+
+BOOST_AUTO_TEST_CASE(assignment_move) {
+	std::initializer_list<int> init_list{ 13, 16, 19 };
+	lazy_vector<int>* vec1 = new lazy_vector<int>(init_list);
+	lazy_vector<int> vec2;
+
+	vec2 = std::move(*vec1);
+
+
+	BOOST_CHECK_EQUAL(vec2.size(), init_list.size());
+	BOOST_CHECK_EQUAL(vec1->size(), 0);
+
+	// check if vec2 can stand on its own when vec1 is gone from memory
+	delete vec1;
+
 	int i = 0;
 	for (const auto itr : init_list) {
 		BOOST_CHECK_EQUAL(vec2[i], itr);
@@ -175,7 +215,6 @@ BOOST_AUTO_TEST_CASE(reserve) {
 	vec.reserve(n);
 	BOOST_CHECK(n <= vec.capacity());
 }
-
 
 BOOST_AUTO_TEST_CASE(at) {
 	int third_value = 19;

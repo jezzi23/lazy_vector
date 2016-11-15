@@ -2,26 +2,21 @@
 #ifndef LAZY_VECTOR_H_
 #define LAZY_VECTOR_H_
 
-#include <cassert>
 #include <initializer_list>
 #include <stdlib.h>
 #include <memory>
-#include <iostream>
 #include <utility>
-
-#define LAZY_VECTOR_DEFAULT_CAPACITY 16
 
 
 template<class T, class Allocator = std::allocator<T>>
 class lazy_vector {
-
 public:
 	// The usual typedef interface against the STL
 	typedef T value_type;
-	typedef T* pointer;
+	typedef value_type* pointer;
 	typedef const pointer const_pointer;
-	typedef T& reference;
-	typedef const reference const_reference;
+	typedef value_type& reference;
+	typedef const value_type& const_reference;
 	typedef std::size_t size_type;
 	typedef std::ptrdiff_t difference_type;
 
@@ -30,23 +25,19 @@ public:
 
 	// Construct an empty lazy_vector
 	lazy_vector();
-
-	// Construct with n objects using T's default constructor
-	lazy_vector(size_type n);
-
 	// Construct with n objects T, with each being a copy of val
-	lazy_vector(size_type n, const_reference val);
-
+	// val defaults to T's default constructor
+	lazy_vector(const size_type n, const_reference val = value_type());
 	// Construct with initializer list, e.g. { 1, 2, 3 }
-	lazy_vector(const std::initializer_list<T>& list);
-
+	lazy_vector(const std::initializer_list<T>& rhs_list);
 	// Copy constructor - exception safe
-	lazy_vector(const lazy_vector& vec);
+	lazy_vector(const lazy_vector& rhs_vec);
+	// (Move) Assignment - exception safe
+	lazy_vector& operator=(lazy_vector rhs_vec);
+	// Move constructor - exception safe
+	lazy_vector(lazy_vector&& rhs_vec);
 
 	~lazy_vector();
-
-	// Assignment - exception safe
-	lazy_vector& operator=(lazy_vector vec);
 
 	// Iterator providers
 
@@ -60,22 +51,21 @@ public:
 	// Returns the amount of elements in the container
 	size_type size() const;
 	// Force a new size, amount of elements, for the container
-	void resize(size_type new_size, const reference val);
-	void resize(size_type new_size, value_type&& val);
+	void resize(const size_type new_size, const_reference val = value_type());
 	// Returns the maximum capacity of the container
 	size_type capacity() const;
 	// Returns 0 if empty, else 1
 	bool empty() const;
 	// Prepares the container for storing 'reserve_amount' elements
 	// without the need for further allocations
-	void reserve(size_type reserve_amount);
+	void reserve(const size_type reserve_amount);
 
 	// Accessing
 
 	// Returns the element at a given position - may throw std::out_of_range
-	reference at(size_type pos) const;
+	reference at(const size_type pos) const;
 	// Returns the element at a given position - does not throw an exception
-	reference operator[](size_type pos) const;
+	reference operator[](const size_type pos) const;
 	// Returns the first element
 	reference front() const;
 	// Returns the last element
@@ -84,12 +74,11 @@ public:
 	// Modifying
 
 	// Inserts a new element at the end, as a copy of a given value
-	void push_back(value_type&& val);
-	void push_back(const reference val);
+	void push_back(const_reference val);
 	// Removes the last element and returns a copy of it
 	value_type pop_back();
 	// Swap two vectors of the same type
-	static void swap(lazy_vector<T, Allocator>& first, lazy_vector<T, Allocator>& second);
+	static void swap(lazy_vector<T, Allocator>& lhs_vec, lazy_vector<T, Allocator>& rhs_vec);
 	// Remove all elements
 	// Capacity remains the same
 	void clear();
@@ -97,7 +86,7 @@ public:
 	// Customized STL compliant iterator, lazy_vector<...>::iterator
 	class iterator {
 	public:
-		//pass some existing typedefs from lazy_vector<T, Allocator> to lazy_vector<T, Allocator>::iterator
+		//pass some existing typedefs from lazy_vector<T,Allocator> to its iterator type
 		typedef std::random_access_iterator_tag iterator_category;
 		typedef difference_type difference_type;
 		typedef value_type value_type;
@@ -106,30 +95,29 @@ public:
 		typedef size_type size_type;
 
 		iterator();
-		iterator(pointer current, pointer head_first, pointer head_last, pointer tail_first, pointer tail_last);
+		iterator(pointer current, pointer head_first,
+				 pointer head_last, pointer tail_first,
+				 pointer tail_last);
 
 		bool operator==(const iterator& it);
 		bool operator!=(const iterator& it);
 
-		iterator operator+(size_type n);
+		// operators appreciated by the STL for iterators
+		iterator operator+(const size_type n);
 		iterator& operator++();
-		iterator operator++(int);
-		iterator& operator +=(size_type incr);
-		iterator operator-(size_type n);
+		iterator operator++(const int);
+		iterator& operator +=(const size_type incr);
+		iterator operator-(const size_type n);
 		iterator& operator--();
 		iterator operator--(int);
 		size_type operator-(const iterator& it); //the distance between two iterators
-		iterator& operator-=(size_type decr);
+		iterator& operator-=(const size_type decr);
 		reference operator*();
 		reference operator->();
 		bool operator<(const iterator& it);
 
 	private:
-		pointer current_ptr;
-		pointer head_first;
-		pointer head_last;
-		pointer tail_first;
-		pointer tail_last;
+		pointer current_ptr, head_first, head_last, tail_first, tail_last;
 	};
 
 private:
@@ -146,151 +134,76 @@ private:
 	} mem_region;
 
 	mem_region head, tail;
-	Allocator allocator;
+	static const size_t default_capacity;
+	static Allocator allocator;
 };
 
-/*-----------------------------------------
- | LAZY_VECTOR IMPLEMENTATION BEGINS
+/*----------------------------------------*
+ | BEGIN LAZY_VECTOR IMPLEMENTATION
  *----------------------------------------*/
 
+// LAZY_VECTOR - PUBLIC METHODS
 
-/*-----------------------------------------
- | LAZY_VECTOR PRIVATE METHODS
- *----------------------------------------*/
-
-//head.size must be 0
-template<class T, class Allocator>
-void lazy_vector<T, Allocator>::extend() {
-	//all values T in head have been destructed
-	//free the memory
-	allocator.deallocate(head.first, head.capacity);
-
-	head = tail; // head becomes tail
-	//tail may now be overwritten
-
-	tail.first = (pointer) allocator.allocate(head.capacity * 2);
-	tail.capacity = head.capacity * 2;
-	tail.size = 0;
-}
-
-//tail.size must be 0
-template<class T, class Allocator>
-void lazy_vector<T, Allocator>::shorten() {
-	//all values T in tail have been destructed
-	//free memory in tail
-	allocator.deallocate(tail.first, tail.capacity);
-	tail = head;
-
-	//head may now be overwritten
-	head = { 0, 0, 0 }; // first, size, capacity
-}
-
-template<class T, class Allocator>
-void lazy_vector<T, Allocator>::empty_head() {
-	// clear out head and move to tail
-	for (size_type i = 0; i < head.size; ++i) {
-		new (tail.first + i)  value_type(*(head.first + i));
-	}
-	for (size_type i = 0; i < head.size; ++i) {
-		head.first[i].~value_type();
-	}
-	tail.size += head.size;
-	head.size = 0;
-}
-
-
-template<class T, class Allocator>
-bool lazy_vector<T, Allocator>::lazy() const {
-	if (head.capacity == 0) return 0; //head is unused
-	// returns true if a lazy copy has to be made
-	assert(2*head.size + tail.size <= tail.capacity);
-	return 2*head.size + tail.size == tail.capacity;
-}
-
-
-/*-----------------------------------------
- | LAZY_VECTOR PUBLIC METHODS
- *----------------------------------------*/
-
-// LAZY_VECTOR : CONSTRUCTOR & ASSIGNEMNT METHODS
+// LAZY_VECTOR : CONSTRUCTOR, ASSIGNEMNT & DESTRUCTOR METHODS
 template<class T, class Allocator>
 lazy_vector<T, Allocator>::lazy_vector() : head(){
-	tail.size = 0;
-	tail.capacity = LAZY_VECTOR_DEFAULT_CAPACITY;
-	tail.first = (pointer) allocator.allocate(tail.capacity);
+	pointer const tail_array = (pointer const)allocator.allocate(default_capacity);
+	tail = { tail_array, 0, default_capacity };
 }
 
 template<class T, class Allocator>
-lazy_vector<T, Allocator>::lazy_vector(size_type n) : head() {
+lazy_vector<T, Allocator>::lazy_vector(const size_type n, const_reference val) : head() {
+
 	size_type new_capacity = 1;
-	//find a reasonable amount of elements to allocate for
-	while (n >= new_capacity) new_capacity *= 2;
-	tail.capacity = new_capacity;
-	tail.size = n;
-	tail.first = (pointer) allocator.allocate(new_capacity);
+	while (n >= new_capacity) new_capacity <<= 1;
+	pointer const tail_array = (pointer const)allocator.allocate(new_capacity);
+
+	tail = { tail_array, n, new_capacity };
 	//construct n objects value_type using default constructor
 	for (size_type i = 0; i < n; ++i) {
 		//placement new into tail
-		new (tail.first + i) value_type();
+		new (tail.first + i) value_type(val);
 	}
 }
 
 template<class T, class Allocator>
-lazy_vector<T, Allocator>::lazy_vector(size_type n, const reference vec) {
-
-	head.capacity = 0;
-	head.size = 0;
-	head.first = nullptr;
+lazy_vector<T, Allocator>::lazy_vector(const std::initializer_list<T>& list) : head() {
 
 	size_type new_capacity = 1;
-	while (n >= new_capcity) new_capacity *= 2;
+	const size_type n = list.size();
+	while (n >= new_capacity) new_capacity <<= 1;
 
-	tail.capacity = new_capacity
-	tail.size = n;
-	tail.first = (pointer) allocator.allocate(n);
-	//construct n objects value_type using copy constructor with reference
-	for (int i = 0; i < n; ++i) {
-		//placement new into tail
-		new (tail.first + i) value_type(vec);
-	}
-}
-
-template<class T, class Allocator>
-lazy_vector<T, Allocator>::lazy_vector(const std::initializer_list<T>& list) {
-
-	head.capacity = 0;
-	head.size = 0;
-	head.first = nullptr;
-
-	size_type new_capacity = 1;
-	size_type n = list.size();
-	while (n >= new_capacity) new_capacity *= 2;
-
-	tail.capacity = new_capacity;
-	tail.size = n;
-	tail.first = (pointer)allocator.allocate(n);
+	pointer const tail_array = (pointer const)allocator.allocate(new_capacity);
+	tail = { tail_array, n, new_capacity };
 	//construct n objects value_type using copy constructor with reference
 	size_type i = 0;
-	for (auto item : list) {
+	for (const auto item : list) {
 		//placement new into tail
 		new (tail.first + (i++)) value_type(item);
 	}
-
 }
 
 template<class T, class Allocator>
-lazy_vector<T, Allocator>::lazy_vector(const lazy_vector& cVec) 
-								: head(cVec.head),
-								  tail(cVec.tail) {
+lazy_vector<T, Allocator>::lazy_vector(const lazy_vector& rhs_vec) 
+								: head(rhs_vec.head),
+								  tail(rhs_vec.tail) {
 	//alloc for new head & tail
 	if (head.size > 0) {
 		head.first = (pointer) allocator.allocate(head.size);
-		memcpy(head.first, cVec.head.first, head.size * sizeof(value_type));
+		memcpy(head.first, rhs_vec.head.first, head.size * sizeof(value_type));
 	}
 	if (tail.size > 0) { 
-		tail.first = (pointer) allocator.allocate(cVec.tail.size);
-		memcpy(tail.first+head.size, cVec.tail.first+head.size, tail.size * sizeof(value_type));
+		tail.first = (pointer) allocator.allocate(rhs_vec.tail.size);
+		memcpy(tail.first+head.size, rhs_vec.tail.first + head.size, tail.size * sizeof(value_type));
 	}
+}
+
+template<class T, class Allocator>
+lazy_vector<T, Allocator>::lazy_vector(lazy_vector&& rhs_vec)
+								: head(rhs_vec.head),
+								  tail(rhs_vec.tail) {
+	//remove ownership from rhs_vec
+	rhs_vec.head = rhs_vec.tail = { nullptr , 0, 0 };
 }
 
 // LAZY_VECTOR : DESTRUCTOR
@@ -299,27 +212,25 @@ template<class T, class Allocator>
 lazy_vector<T, Allocator>::~lazy_vector() {
 	clear();
 
-	if (head.capacity >= 0) {
+	if (head.capacity > 0) {
 		allocator.deallocate(head.first, head.capacity);
 		head.capacity = 0;
 	}
-	if (tail.capacity >= 0) {
+	if (tail.capacity > 0) {
 		allocator.deallocate(tail.first, tail.capacity);
 		tail.capacity = 0;
 	}
 }
 
-// Assignment operator provides strong exception safety - copy swap idiom
 template<class T, class Allocator>
 lazy_vector<T, Allocator>& lazy_vector<T, Allocator>::operator=(lazy_vector vec) {
 	// vec is passed by value and is created as a temporary vector
 	// using the copy constructor
-	// (no need for self-assignment check)
+	// (no need for self-assignment - cannot occur)
 
 	// proceed to swap after successful copying
 	lazy_vector<T, Allocator>::swap(*this, vec);
 	return *this;
-
 }
 
 // LAZY_VECTOR : CAPACITY
@@ -330,12 +241,7 @@ typename lazy_vector<T, Allocator>::size_type lazy_vector<T, Allocator>::size() 
 }
 
 template<class T, class Allocator>
-void lazy_vector<T, Allocator>::resize(size_type new_size, const reference val) {
-	resize(new_size, std::move(val));
-}
-
-template<class T, class Allocator>
-void lazy_vector<T, Allocator>::resize(size_type new_size, value_type&& val) {
+void lazy_vector<T, Allocator>::resize(const size_type new_size, const_reference val) {
 	while (new_size > size()) {
 		push_back(val);
 	}
@@ -355,7 +261,7 @@ bool lazy_vector<T, Allocator>::empty() const {
 }
 
 template<class T, class Allocator>
-void lazy_vector<T, Allocator>::reserve(size_type reserve_amount) {
+void lazy_vector<T, Allocator>::reserve(const size_type reserve_amount) {
 	if (reserve_amount > capacity()) {
 		empty_head();
 		if (head.first) {
@@ -365,14 +271,13 @@ void lazy_vector<T, Allocator>::reserve(size_type reserve_amount) {
 	head = tail;
 	// tail can now be overwritten
 	size_type new_capacity = head.capacity;
-	while (reserve_amount >= new_capacity) new_capacity *= 2;
-	tail.first = allocator.allocate(new_capacity);
-	tail.size = 0;
-	tail.capacity = new_capacity;
+	while (reserve_amount >= new_capacity) new_capacity <<= 1;
+	pointer const tail_array = (pointer const)allocator.allocate(new_capacity);
+	tail = { tail_array, 0, new_capacity };
 }
 
-
 // LAZY_VECTOR : ITERATORS METHODS
+
 template<class T, class Allocator>
 typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::begin() const {
 	pointer head_last = head.first + head.size - 1;
@@ -383,7 +288,7 @@ typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::begin() 
 	if (lazy()) current_ptr = head.first;
 	else current_ptr = tail_first;
 	return iterator(current_ptr, head.first, head_last,
-			tail_first, tail_last);
+					tail_first, tail_last);
 }
 
 template<class T, class Allocator>
@@ -398,7 +303,7 @@ typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::end() co
 
 // LAZY_VECTOR : ACCESSING METHODS
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::at(size_type pos) const {
+typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::at(const size_type pos) const {
 	// possibly throw out of range exception
 	if (pos < 0 || pos >= size())
 		throw std::out_of_range;
@@ -411,7 +316,7 @@ typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::at(size
 }
 
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::operator[](size_type pos) const {
+typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::operator[](const size_type pos) const {
 	// no throw
 	if (pos >= head.size) {
 		return tail.first[pos];
@@ -431,29 +336,24 @@ typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::back() 
 	return *(end() - 1);
 }
 
-// LAZY_VECTOR : MODIFYING METHODS template<class T, class Allocator>
+// LAZY_VECTOR : MODIFYING METHODS
 
 template<class T, class Allocator>
-void lazy_vector<T, Allocator>::push_back(value_type&& val) {
+void lazy_vector<T, Allocator>::push_back(const_reference val) {
 	if (head.size + tail.size >= tail.capacity) {
-		extend();
-	}
-	if (lazy()) {
-		//lazy copy 1 item from head to tail using copy constructor
-		new (&tail.first[head.size - 1]) value_type(head.first[head.size - 1]);
-		++tail.size;
-		//explicitly destruct unused T in head
-		head.first[head.size - 1].~value_type();
-		--head.size;
-	}
-	//construct new T in tail - using placement new
-	new (&tail.first[head.size + tail.size]) value_type(val);
-	++tail.size;
-}
-
-template<class T, class Allocator>
-void lazy_vector<T, Allocator>::push_back(const reference val) {
-	push_back(std::move(val));
+				extend();
+			}
+			if (lazy()) {
+				//lazy copy 1 item from head to tail using copy constructor
+				new (&tail.first[head.size - 1]) value_type(head.first[head.size - 1]);
+				++tail.size;
+				//explicitly destruct unused T in head
+				head.first[head.size - 1].~value_type();
+				--head.size;
+			}
+			//construct new T in tail - using placement new
+			new (&tail.first[head.size + tail.size]) value_type(val);
+			++tail.size;
 }
 
 template<class T, class Allocator>
@@ -494,22 +394,74 @@ void lazy_vector<T, Allocator>::clear() {
 }
 // the swap function is guaranteed to never throw
 template <class T, class Allocator>
-void lazy_vector<T, Allocator>::swap(lazy_vector& first, lazy_vector& second) {
+void lazy_vector<T, Allocator>::swap(lazy_vector& lhs_vec, lazy_vector& rhs_vec) {
 	using std::swap;
 
-	swap(first.head, second.head);
-	swap(first.tail, second.tail);
+	swap(lhs_vec.head, rhs_vec.head);
+	swap(lhs_vec.tail, rhs_vec.tail);
 }
 
+// LAZY_VECTOR PRIVATE METHODS
 
+//head.size must be 0
+template<class T, class Allocator>
+void lazy_vector<T, Allocator>::extend() {
+	//all values T in head have been destructed
+	//free the memory
+	allocator.deallocate(head.first, head.capacity);
+
+	head = tail; // head becomes tail
+				 // tail may now be overwritten
+
+	tail.first = (pointer)allocator.allocate(head.capacity * 2);
+	tail.capacity = head.capacity * 2;
+	tail.size = 0;
+}
+
+//tail.size must be 0
+template<class T, class Allocator>
+void lazy_vector<T, Allocator>::shorten() {
+	//all values T in tail have been destructed
+	//free memory in tail
+	allocator.deallocate(tail.first, tail.capacity);
+	tail = head;
+
+	//head may now be overwritten
+	head = { 0, 0, 0 }; // first, size, capacity
+}
+
+template<class T, class Allocator>
+void lazy_vector<T, Allocator>::empty_head() {
+	// clear out head and move to tail
+	for (size_type i = 0; i < head.size; ++i) {
+		new (tail.first + i)  value_type(*(head.first + i));
+	}
+	for (size_type i = 0; i < head.size; ++i) {
+		head.first[i].~value_type();
+	}
+	tail.size += head.size;
+	head.size = 0;
+}
+
+template<class T, class Allocator>
+bool lazy_vector<T, Allocator>::lazy() const {
+	if (head.capacity == 0) return 0; //head is unused
+									  // returns true if a lazy copy has to be made
+	return 2 * head.size + tail.size == tail.capacity;
+}
+
+template<class T, class Allocator>
+const typename lazy_vector<T, Allocator>::size_type lazy_vector<T, Allocator>::default_capacity = 1 << 4;
+
+template<class T, class Allocator>
+Allocator lazy_vector<T, Allocator>::allocator;
 
 /*-----------------------------------------
- | LAZY_VECTOR IMPLEMENTATION ENDS
+ | END LAZY_VECTOR IMPLEMENTATION
  *----------------------------------------*/
 
-
 /*-----------------------------------------
- | LAZY_VECTOR ITERATOR IMPLEMENTATIONS BEGINS
+ | BEGIN LAZY_VECTOR ITERATOR IMPLEMENTATION
  *----------------------------------------*/
 
 template<class T, class Allocator>
@@ -517,13 +469,15 @@ lazy_vector<T, Allocator>::iterator::iterator() {
 }
 
 template<class T, class Allocator>
-lazy_vector<T, Allocator>::iterator::iterator(pointer curr, pointer h_first, pointer h_last, pointer t_first, pointer t_last)
-	: current_ptr(curr), head_first(h_first), head_last(h_last), tail_first(t_first), tail_last(t_last) {
+lazy_vector<T, Allocator>::iterator::iterator(pointer curr, pointer h_first, pointer h_last,
+											  pointer t_first, pointer t_last) :
+	current_ptr(curr),
+	head_first(h_first), head_last(h_last),
+	tail_first(t_first), tail_last(t_last) {
 }
 
-
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator+(size_type n) {
+typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator+(const size_type n) {
 	pointer new_ptr;
 	// if current_ptr is within head and current_ptr + n exceeds head..
 	if (current_ptr + n > head_last && current_ptr <= head_last) {
@@ -544,14 +498,12 @@ bool lazy_vector<T, Allocator>::iterator::operator!=(const iterator& it) {
 	return current_ptr != it.current_ptr;
 }
 
-
 template<class T, class Allocator>
 typename lazy_vector<T, Allocator>::iterator& lazy_vector<T, Allocator>::iterator::operator++() {
 	if (current_ptr == head_last) current_ptr = tail_first;
 	else ++current_ptr;
 	return *this;
 }
-
 
 template<class T, class Allocator>
 typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator++(int) {
@@ -561,13 +513,13 @@ typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator
 }
 
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::iterator& lazy_vector<T, Allocator>::iterator::operator+=(size_type incr) {
+typename lazy_vector<T, Allocator>::iterator& lazy_vector<T, Allocator>::iterator::operator+=(const size_type incr) {
 	*this = *this + incr;
 	return *this;
 }
 
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator-(size_type len) {
+typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator-(const size_type len) {
 	// if current_ptr is within head and current_ptr + len exceeds head..
 	pointer new_ptr;
 	if (current_ptr - len < tail_first && current_ptr >= tail_first) {
@@ -587,7 +539,7 @@ typename lazy_vector<T, Allocator>::iterator& lazy_vector<T, Allocator>::iterato
 }
 
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator--(int) {
+typename lazy_vector<T, Allocator>::iterator lazy_vector<T, Allocator>::iterator::operator--(const int) {
 	lazy_vector<T, Allocator>::iterator tmp(*this);
 	--(*this);
 	return tmp;
@@ -617,7 +569,7 @@ typename lazy_vector<T, Allocator>::size_type lazy_vector<T, Allocator>::iterato
 }
 
 template<class T, class Allocator>
-typename lazy_vector<T, Allocator>::iterator& lazy_vector<T, Allocator>::iterator::operator-=(size_type decr) {
+typename lazy_vector<T, Allocator>::iterator& lazy_vector<T, Allocator>::iterator::operator-=(const size_type decr) {
 	*this = *this - decr;
 	return *this;
 }
@@ -649,8 +601,7 @@ bool lazy_vector<T, Allocator>::iterator::operator<(const iterator& it) {
 }
 
 /*-----------------------------------------
- | LAZY_VECTOR ITERATOR IMPLEMENTATIONS ENDS
+ | END LAZY_VECTOR ITERATOR IMPLEMENTATION
  *----------------------------------------*/
 
 #endif // LAZY_VECTOR_H_
-
