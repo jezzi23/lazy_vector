@@ -6,13 +6,13 @@ lazy_vector works as a dynamic array that might, behind the scenes, reside in tw
 
 ##Motivation.
 lazy_vector guarantees worst case constant time complexity of insertions at back whereas std::vector of the STL has linear time complexity in the worst case when a reallocation is needed. In order to accomplish this, lazy_vector lazily copies one element at a time from the older array to the newer one on each new insertion.
-In some applications, a large reallocation for a dynamic array such as std::vector is unacceptible. For example in real-time simulations.
+In some cases, a large vector re-allocation copy operation is not desired and lazy_vector might a solution.
 
 ##Usage.
 
-lazy_vector's implementation is abstracted and designed to be usable with many features of the STL.
+lazy_vector's implementation is designed to be usable with many features of the STL.
 
-* Can be used very similarly as std::vector.
+* Can be used similarly as std::vector.
 * Accepts a custom allocator. By default std::allocator is used.
 * Can be manipulated using an iterator.
 * Elements' constructors and destructors are called appropriately.
