@@ -3,21 +3,23 @@
 #define LAZY_VECTOR_H_
 
 #include <initializer_list>
-#include <stdlib.h>
+#include <cstdlib>
+#include <cstring>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 template<class T, class Allocator = std::allocator<T>>
 class lazy_vector {
 public:
   // The usual typedef interface against the STL
-  typedef T value_type;
-  typedef value_type* pointer;
-  typedef const pointer const_pointer;
-  typedef value_type& reference;
+  typedef T                 value_type;
+  typedef value_type*       pointer;
+  typedef const pointer     const_pointer;
+  typedef value_type&       reference;
   typedef const value_type& const_reference;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
+  typedef std::size_t       size_type;
+  typedef std::ptrdiff_t    difference_type;
 
   class iterator;
   typedef const iterator const_iterator;
@@ -85,14 +87,6 @@ public:
   // Customized STL compliant iterator, lazy_vector<...>::iterator
   class iterator {
   public:
-    //pass some existing typedefs from lazy_vector<T,Allocator> to its iterator type
-    typedef std::random_access_iterator_tag iterator_category;
-    typedef difference_type difference_type;
-    typedef value_type value_type;
-    typedef pointer pointer;
-    typedef reference reference;
-    typedef size_type size_type;
-
     iterator();
     iterator(pointer current, pointer head_first,
              pointer head_last, pointer tail_first,
@@ -100,20 +94,20 @@ public:
 
     bool operator==(const iterator& it);
     bool operator!=(const iterator& it);
+    bool operator<(const iterator& it);
 
     // operators appreciated by the STL for iterators
-    iterator operator+(const size_type n);
+    iterator  operator+(const size_type n);
     iterator& operator++();
-    iterator operator++(const int);
+    iterator  operator++(const int);
     iterator& operator +=(const size_type incr);
-    iterator operator-(const size_type n);
+    iterator  operator-(const size_type n);
     iterator& operator--();
-    iterator operator--(int);
+    iterator  operator--(int);
     size_type operator-(const iterator& it); //the distance between two iterators
     iterator& operator-=(const size_type decr);
     reference operator*();
     reference operator->();
-    bool operator<(const iterator& it);
 
   private:
     pointer current_ptr, head_first, head_last, tail_first, tail_last;
@@ -187,12 +181,16 @@ lazy_vector<T, Allocator>::lazy_vector(const lazy_vector& rhs_vec) : head(rhs_ve
                                                                      tail(rhs_vec.tail) {
   //alloc for new head & tail
   if (head.size > 0) {
-    head.first = static_cast<pointer>(allocator.allocate(head.size));
-    memcpy(head.first, rhs_vec.head.first, head.size * sizeof(value_type));
+    head.first = static_cast<pointer>(allocator.allocate(head.capacity));
+    std::memcpy(head.first, 
+                rhs_vec.head.first,
+                head.size * sizeof(value_type));
   }
   if (tail.size > 0) { 
-    tail.first = static_cast<pointer>(allocator.allocate(rhs_vec.tail.size));
-    memcpy(tail.first+head.size, rhs_vec.tail.first + head.size, tail.size * sizeof(value_type));
+    tail.first = static_cast<pointer>(allocator.allocate(tail.capacity));
+    std::memcpy(tail.first + head.size,
+                rhs_vec.tail.first + head.size,
+                tail.size * sizeof(value_type));
   }
 }
 
@@ -304,7 +302,7 @@ typename lazy_vector<T, Allocator>::reference lazy_vector<T, Allocator>::at(
     const size_type pos) const {
   // possibly throw out of range exception
   if (pos < 0 || pos >= size())
-    throw std::out_of_range;
+    throw std::out_of_range("lazy_vector.at() access out of range");
   if (pos >= head.size) {
     return tail.first[pos];
   }
@@ -426,7 +424,7 @@ void lazy_vector<T, Allocator>::shorten() {
   tail = head;
 
   //head may now be overwritten
-  head = { 0, 0, 0 }; // first, size, capacity
+  head = { nullptr, 0, 0 }; // first, size, capacity
 }
 
 template<class T, class Allocator>
@@ -607,5 +605,5 @@ bool lazy_vector<T, Allocator>::iterator::operator<(const iterator& it) {
 /*-----------------------------------------
  | END LAZY_VECTOR ITERATOR IMPLEMENTATION
  *----------------------------------------*/
-
+  
 #endif // LAZY_VECTOR_H_

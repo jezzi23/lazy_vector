@@ -9,7 +9,7 @@ public:
     x = new int();
   }
   TestType(const TestType& t) {
-    x = new int(*t.x);
+    x = (t.x == nullptr) ? nullptr : new int(*t.x); 
   }
 
   ~TestType() {
@@ -17,8 +17,8 @@ public:
   }
 
   TestType& operator=(const TestType& t) {
-    if (t.x != 0) delete x;
-    x = new int(*t.x);
+    x = (t.x == nullptr) ? nullptr : new int(*t.x); 
+    return *this;
   }
   int* x;
 };
@@ -47,7 +47,6 @@ BOOST_AUTO_TEST_CASE(constructor_2) {
 }
 
 BOOST_AUTO_TEST_CASE(constructor_3) {
-  int n = 42;
   std::initializer_list<int> init_list { 1, 5, 9, 14 };
   std::vector<int> vec = init_list;
   
