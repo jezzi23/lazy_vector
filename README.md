@@ -41,11 +41,11 @@ vec[7] = 100;
 //vec now contains [9,8,7,6,5,8,6,<b>100</b>,2,0].
 
 //using STL functions
-//swap fourth element from beginning wand the third element from the end
+//swap fifth element from beginning and the third element from the end
 std::iter_swap(vec.begin()+4, vec.end()-3);
 //vec now contains [9,8,7,6,<b>100</b>,8,6,<b>5</b>,2,0]
 
-//sort the lazy_vector from beginning to the seventh element
+//sort the lazy_vector from beginning to the eighth element
 std::sort(vec.begin(), vec.begin()+8);
 //vec now contains [<b>5,6,6,7,8,8,9,100</b>,2,0]
 </code></pre>
